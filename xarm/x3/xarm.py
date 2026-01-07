@@ -1029,12 +1029,20 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, LinearMotor, FtSensor, Mo
         return ret[0]
 
     @xarm_is_connected(_type='get')
-    def get_inverse_kinematics(self, pose, input_is_radian=None, return_is_radian=None):
+    def get_inverse_kinematics(self, pose, input_is_radian=None, return_is_radian=None, limited=True, ref_angles=None):
         input_is_radian = self._default_is_radian if input_is_radian is None else input_is_radian
         return_is_radian = self._default_is_radian if return_is_radian is None else return_is_radian
         assert len(pose) >= 6
         tcp_pose = [to_radian(pose[i], input_is_radian or i <= 2) for i in range(6)]
-        ret = self.arm_cmd.get_ik(tcp_pose)
+        if self.version_is_ge(2, 7, 103):
+            ref_joints = None
+            if ref_angles is not None:
+                ref_joints = [0] * 7
+                for i in range(min(len(ref_angles), 7)):
+                    ref_joints[i] = to_radian(ref_angles[i], input_is_radian)
+            ret = self.arm_cmd.get_ik(tcp_pose, limited=limited, ref_angles=ref_joints)
+        else:
+            ret = self.arm_cmd.get_ik(tcp_pose)
         angles = []
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0:

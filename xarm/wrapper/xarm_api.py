@@ -1760,7 +1760,7 @@ class XArmAPI(object):
         """
         return self._arm.save_conf()
 
-    def get_inverse_kinematics(self, pose, input_is_radian=None, return_is_radian=None):
+    def get_inverse_kinematics(self, pose, input_is_radian=None, return_is_radian=None, limited=True, ref_angles=None):
         """
         Get inverse kinematics
 
@@ -1768,12 +1768,17 @@ class XArmAPI(object):
             Note: the roll/pitch/yaw unit is radian if input_is_radian is True, else °
         :param input_is_radian: the param pose value(only roll/pitch/yaw) is in radians or not, default is self.default_is_radian
         :param return_is_radian: the returned value is in radians or not, default is self.default_is_radian
+        :param limited: the result is limited to within ±180° or not, default is True
+            Note: only available if firmware_version >= 2.7.103
+        :param ref_angles: reference values for joint angles
+            Note: unit is radian if input_is_radian is True, else °
+            Note: only available if firmware_version >= 2.7.103
         :return: tuple((code, angles)), only when code is 0, the returned result is correct.
             code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             angles: [angle-1(rad or °), angle-2, ..., angle-(Number of axes)] or []
                 Note: the returned angle value is radians if return_is_radian is True, else °
         """
-        return self._arm.get_inverse_kinematics(pose, input_is_radian=input_is_radian, return_is_radian=return_is_radian)
+        return self._arm.get_inverse_kinematics(pose, input_is_radian=input_is_radian, return_is_radian=return_is_radian, limited=limited, ref_angles=ref_angles)
 
     def get_forward_kinematics(self, angles, input_is_radian=None, return_is_radian=None):
         """

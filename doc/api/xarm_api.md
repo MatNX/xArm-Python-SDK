@@ -1,4 +1,4 @@
-xArm-Python-SDK API Documentation (V1.17.3): class XArmAPI in module xarm.wrapper.xarm_api
+xArm-Python-SDK API Documentation (V1.17.4): class XArmAPI in module xarm.wrapper.xarm_api
 
 ## class __XArmAPI__
 ****************************************
@@ -783,7 +783,7 @@ xArm-Python-SDK API Documentation (V1.17.3): class XArmAPI in module xarm.wrappe
 > &ensp;&ensp;&ensp;&ensp;point: initial point, [J1, J2, ..., J7]
 
 
-#### def __get_inverse_kinematics__(self, pose, input_is_radian=None, return_is_radian=None):
+#### def __get_inverse_kinematics__(self, pose, input_is_radian=None, return_is_radian=None, limited=True, ref_angles=None):
 
 > Get inverse kinematics  
 >   
@@ -791,6 +791,11 @@ xArm-Python-SDK API Documentation (V1.17.3): class XArmAPI in module xarm.wrappe
 > &ensp;&ensp;&ensp;&ensp;Note: the roll/pitch/yaw unit is radian if input_is_radian is True, else °  
 > :param input_is_radian: the param pose value(only roll/pitch/yaw) is in radians or not, default is self.default_is_radian  
 > :param return_is_radian: the returned value is in radians or not, default is self.default_is_radian  
+> :param limited: the result is limited to within ±180° or not, default is True  
+> &ensp;&ensp;&ensp;&ensp;Note: only available if firmware_version >= 2.7.103  
+> :param ref_angles: reference values for joint angles  
+> &ensp;&ensp;&ensp;&ensp;Note: unit is radian if input_is_radian is True, else °  
+> &ensp;&ensp;&ensp;&ensp;Note: only available if firmware_version >= 2.7.103  
 > :return: tuple((code, angles)), only when code is 0, the returned result is correct.  
 > &ensp;&ensp;&ensp;&ensp;code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.  
 > &ensp;&ensp;&ensp;&ensp;angles: [angle-1(rad or °), angle-2, ..., angle-(Number of axes)] or []  

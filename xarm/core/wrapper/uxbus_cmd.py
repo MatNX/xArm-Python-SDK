@@ -213,9 +213,13 @@ class UxbusCmd(object):
         return data
 
     @lock_require
-    def swop_nfp32(self, funcode, datas, txn, rxn):
+    def swop_nfp32(self, funcode, datas, txn, rxn, additional_bytes=None):
         hexdata = convert.fp32s_to_bytes(datas, txn)
-        ret = self.send_modbus_request(funcode, hexdata, txn * 4)
+        if additional_bytes is not None:
+            hexdata += additional_bytes
+            ret = self.send_modbus_request(funcode, hexdata, txn * 4 + len(additional_bytes))
+        else:
+            ret = self.send_modbus_request(funcode, hexdata, txn * 4)
         if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (rxn + 1)
         ret = self.recv_modbus_response(funcode, ret, rxn * 4, self._G_TOUT)
@@ -632,8 +636,14 @@ class UxbusCmd(object):
     def get_tcp_pose(self):
         return self.get_nfp32(XCONF.UxbusReg.GET_TCP_POSE, 6)
 
-    def get_ik(self, pose):
-        return self.swop_nfp32(XCONF.UxbusReg.GET_IK, pose, 6, 7)
+    def get_ik(self, pose, limited=True, ref_angles=None):
+        if not limited or ref_angles is not None:
+            additional_bytes = bytes([1]) if limited else bytes([0])
+            if ref_angles is not None:
+                additional_bytes += convert.fp32s_to_bytes(ref_angles, 7)
+            return self.swop_nfp32(XCONF.UxbusReg.GET_IK, pose, 6, 7, additional_bytes=additional_bytes)
+        else:
+            return self.swop_nfp32(XCONF.UxbusReg.GET_IK, pose, 6, 7)
 
     def get_fk(self, angles):
         return self.swop_nfp32(XCONF.UxbusReg.GET_FK, angles, 7, 6)
