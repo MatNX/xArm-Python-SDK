@@ -4615,6 +4615,31 @@ class XArmAPI(object):
         """
         return self._arm.get_tgpio_monitor_params()
 
+    def set_modbusrtu_params(self, slave_id, baudrate, stopbits=1, parity=0):
+        """
+        Set the params of the Modbus RTU
+
+        :param slave_id: slave ID, 1-247, default is 1
+        :param baudrate: baudrate, (4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600,
+                 1000000, 1500000, 2000000)
+        :param stopbits: 1/2, default is 1
+        :param parity: 0/1/2, default is 0
+
+        :return code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_modbusrtu_params(slave_id, baudrate, stopbits=stopbits, parity=parity)
+
+    def get_modbusrtu_params(self):
+        """
+        Get the params of the Modbus RTU
+
+        :return: tuple((code, params)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            params: [slave_id, baudrate, stopbits, parity]
+        """
+        return self._arm.get_modbusrtu_params()
+
     ############################ OLD API #############################
 
     def set_tgpio_modbus_timeout(self, timeout, is_transparent_transmission=False, **kwargs):

@@ -2833,3 +2833,17 @@ class Base(BaseObject, Events):
 
     def get_tgpio_monitor_params(self):
         return self.get_common_param(16)
+
+    def set_modbusrtu_params(self, slave_id, baudrate, stopbits=1, parity=0):
+        assert slave_id >= 0 and slave_id <= 247
+        assert baudrate in self.arm_cmd.BAUDRATES
+        assert stopbits in [1, 2]
+        assert parity in [0, 1, 2]
+        baud_inx = self.arm_cmd.BAUDRATES.index(baudrate)
+        return self.set_common_param(26, [slave_id, baud_inx, stopbits, parity])
+
+    def get_modbusrtu_params(self):
+        code, params = self.get_common_param(26)
+        if params[1] >= 0 and params[1] < len(self.arm_cmd.BAUDRATES):
+            params[1] = self.arm_cmd.BAUDRATES[params[1]]
+        return code, params

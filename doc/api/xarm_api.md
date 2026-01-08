@@ -1,4 +1,4 @@
-xArm-Python-SDK API Documentation (V1.17.4): class XArmAPI in module xarm.wrapper.xarm_api
+xArm-Python-SDK API Documentation (V1.17.5): class XArmAPI in module xarm.wrapper.xarm_api
 
 ## class __XArmAPI__
 ****************************************
@@ -943,6 +943,15 @@ xArm-Python-SDK API Documentation (V1.17.4): class XArmAPI in module xarm.wrappe
 > :return: tuple((code, factor)), only when code is 0, the returned result is correct.  
 > &ensp;&ensp;&ensp;&ensp;code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.  
 > &ensp;&ensp;&ensp;&ensp;factor: linear speed limit factor
+
+
+#### def __get_modbusrtu_params__(self):
+
+> Get the params of the Modbus RTU  
+>   
+> :return: tuple((code, params)), only when code is 0, the returned result is correct.  
+> &ensp;&ensp;&ensp;&ensp;code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.  
+> &ensp;&ensp;&ensp;&ensp;params: [slave_id, baudrate, stopbits, parity]
 
 
 #### def __get_mount_direction__(self):
@@ -2817,6 +2826,20 @@ xArm-Python-SDK API Documentation (V1.17.4): class XArmAPI in module xarm.wrappe
 >   
 > :param factor: speed limit factor  
 > :return: code  
+> &ensp;&ensp;&ensp;&ensp;code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+
+
+#### def __set_modbusrtu_params__(self, slave_id, baudrate, stopbits=1, parity=0):
+
+> Set the params of the Modbus RTU  
+>   
+> :param slave_id: slave ID, 1-247, default is 1  
+> :param baudrate: baudrate, (4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600,  
+> &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;1000000, 1500000, 2000000)  
+> :param stopbits: 1/2, default is 1  
+> :param parity: 0/1/2, default is 0  
+>   
+> :return code  
 > &ensp;&ensp;&ensp;&ensp;code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
 
 

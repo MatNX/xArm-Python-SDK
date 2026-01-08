@@ -1428,6 +1428,8 @@ class UxbusCmd(object):
             txdata += convert.fp32_to_bytes(param_val)
         elif param_type in [6, 12, 14]:
             txdata += convert.fp32s_to_bytes(param_val, 6)
+        elif param_type in [26]:
+            txdata += bytes(param_val) if isinstance(param_val, list) else bytes([param_val])
         else:
             # 2/3/4/5/11/13/15/24/25
             if isinstance(param_val, list):
@@ -1448,6 +1450,8 @@ class UxbusCmd(object):
                 if len(ret[1:]) < 24:
                     return [XCONF.UxbusState.INVALID, 0]
                 data[1] = convert.bytes_to_fp32s(ret[1:], 6)
+            elif param_type in [26]:
+                data[1] = ret[1:]
             else:
                 # 2/3/4/5/11/13/15/24/25
                 tmp = convert.bytes_to_u32s(ret[1:], len(ret[1:]) // 4)
