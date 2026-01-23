@@ -1267,7 +1267,7 @@ class UxbusCmd(object):
     #     return ret
 
     @lock_require
-    def ft_sensor_get_error(self):
+    def ft_sensor_get_error(self, is_new=True):
         txdata = bytes([8])
         txdata += convert.u16_to_bytes(0x0010)
         ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_R16B, txdata, 3)
@@ -1278,7 +1278,10 @@ class UxbusCmd(object):
             if convert.bytes_to_int32(ret[1:5]) == 27:
                 return [ret[0], 0]
             else:
-                return [ret[0], ret[3]]
+                if is_new:
+                    return [ret[0], convert.bytes_to_u16(ret[3:5])]
+                else:
+                    return [ret[0], ret[3]]
         return [ret[0], 0]
 
     def cali_tcp_pose(self, four_pnts):

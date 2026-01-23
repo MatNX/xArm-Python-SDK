@@ -436,7 +436,7 @@ class FtSensor(Base):
 
     @xarm_is_connected(_type='get')
     def get_ft_sensor_error(self):
-        ret = self.arm_cmd.ft_sensor_get_error()
+        ret = self.arm_cmd.ft_sensor_get_error(self.version_is_ge(2, 7, 100))
         ret[0] = self._check_code(ret[0])
         return ret[0], ret[1]
 
