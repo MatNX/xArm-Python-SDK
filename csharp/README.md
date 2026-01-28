@@ -14,11 +14,15 @@ arm.Connect("192.168.1.10");
 arm.EnableMotion();
 arm.SetMode(0);
 arm.SetState(0);
+arm.CleanError();
 
 arm.MoveJoints(new JointPositions(0, 0, 0, 0, 0, 0), speed: 0.5, acceleration: 0.2);
+arm.MoveHome(speed: 0.5, acceleration: 0.2);
 var pose = arm.GetPose();
 var status = arm.GetStatus();
 var version = arm.GetFirmwareVersion();
+var serial = arm.GetRobotSerialNumber();
+var commandCount = arm.GetCommandCount();
 ```
 
 ## Notes

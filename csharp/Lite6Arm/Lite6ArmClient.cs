@@ -50,6 +50,21 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetState(state, timeout ?? _defaultTimeout);
     }
 
+    public void CleanError(TimeSpan? timeout = null)
+    {
+        _uxbus.CleanError(timeout ?? _defaultTimeout);
+    }
+
+    public void CleanWarning(TimeSpan? timeout = null)
+    {
+        _uxbus.CleanWarning(timeout ?? _defaultTimeout);
+    }
+
+    public int GetCommandCount(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetCommandCount(timeout ?? _defaultTimeout);
+    }
+
     public void MoveJoints(JointPositions joints, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
     {
         var payload = new[]
@@ -79,6 +94,11 @@ public class Lite6ArmClient : IDisposable
         };
 
         _uxbus.MoveLine(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveHome(double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
+    {
+        _uxbus.MoveHome((float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
     public JointPositions GetJointPositions()
@@ -129,6 +149,11 @@ public class Lite6ArmClient : IDisposable
     public string GetFirmwareVersion()
     {
         return _uxbus.GetVersion(_defaultTimeout);
+    }
+
+    public string GetRobotSerialNumber()
+    {
+        return _uxbus.GetRobotSerialNumber(_defaultTimeout);
     }
 
     public void Dispose()
