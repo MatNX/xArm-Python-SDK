@@ -101,6 +101,38 @@ internal sealed class UxbusClient
         return response.Length > 0 ? response[0] : 0;
     }
 
+    public void SetBrake(int axisId, bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetBrake, new[] { (byte)axisId, (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SetReportTorqueOrCurrent(bool reportCurrent, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.ReportTauOrI, new[] { (byte)(reportCurrent ? 1 : 0) }, timeout);
+    }
+
+    public int GetReportTorqueOrCurrent(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetReportTauOrI, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public void SetCartesianVelocityContinuous(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetCartVContinue, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SetAllowApproxMotion(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetAllowApproxMotion, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public int GetAllowApproxMotion(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetAllowApproxMotion, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
     public void CleanError(TimeSpan timeout)
     {
         SetNu8(UxbusRegister.CleanErr, Array.Empty<byte>(), timeout);
@@ -147,6 +179,23 @@ internal sealed class UxbusClient
         SetFp32(UxbusRegister.MoveHome, payload, timeout);
     }
 
+    public void MoveCircle(float[] pose1, float[] pose2, float speed, float acceleration, float time, float percent, TimeSpan timeout)
+    {
+        var payload = new float[16];
+        Array.Copy(pose1, 0, payload, 0, Math.Min(pose1.Length, 6));
+        Array.Copy(pose2, 0, payload, 6, Math.Min(pose2.Length, 6));
+        payload[12] = speed;
+        payload[13] = acceleration;
+        payload[14] = time;
+        payload[15] = percent;
+        SetFp32(UxbusRegister.MoveCircle, payload, timeout);
+    }
+
+    public void SleepInstruction(float seconds, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SleepInstruction, new[] { seconds }, timeout);
+    }
+
     public void SetTcpOffset(float[] offset, TimeSpan timeout)
     {
         var payload = new float[6];
@@ -172,6 +221,57 @@ internal sealed class UxbusClient
     public void SetJointMaxAcceleration(float maxAcceleration, TimeSpan timeout)
     {
         SetFp32(UxbusRegister.SetJointMaxAcc, new[] { maxAcceleration }, timeout);
+    }
+
+    public void SetTcpLoad(float mass, float[] centerOfGravity, TimeSpan timeout)
+    {
+        var payload = new float[4];
+        payload[0] = mass;
+        Array.Copy(centerOfGravity, 0, payload, 1, Math.Min(centerOfGravity.Length, 3));
+        SetFp32(UxbusRegister.SetLoadParam, payload, timeout);
+    }
+
+    public void SetCollisionSensitivity(byte value, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetCollisSens, new[] { value }, timeout);
+    }
+
+    public void SetTeachSensitivity(byte value, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetTeachSens, new[] { value }, timeout);
+    }
+
+    public void SetGravityDirection(float[] gravityDirection, TimeSpan timeout)
+    {
+        var payload = new float[3];
+        Array.Copy(gravityDirection, payload, Math.Min(gravityDirection.Length, 3));
+        SetFp32(UxbusRegister.SetGravityDir, payload, timeout);
+    }
+
+    public void SetSafeLevel(byte level, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetSafeLevel, new[] { level }, timeout);
+    }
+
+    public int GetSafeLevel(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetSafeLevel, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public void CleanConfiguration(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.CleanConf, Array.Empty<byte>(), timeout);
+    }
+
+    public void SaveConfiguration(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SaveConf, Array.Empty<byte>(), timeout);
+    }
+
+    public float[] GetJointTorques(TimeSpan timeout)
+    {
+        return GetFp32(UxbusRegister.GetJointTau, 7, timeout);
     }
 
     private void SetNu8(UxbusRegister register, byte[] data, TimeSpan timeout)
@@ -338,6 +438,8 @@ internal enum UxbusRegister : byte
 {
     GetVersion = 0x01,
     GetRobotSn = 0x02,
+    GetReportTauOrI = 0x05,
+    GetAllowApproxMotion = 0x07,
     MotionEnable = 0x0B,
     SetState = 0x0C,
     GetState = 0x0D,
@@ -345,15 +447,30 @@ internal enum UxbusRegister : byte
     GetError = 0x0F,
     CleanErr = 0x10,
     CleanWar = 0x11,
+    SetBrake = 0x12,
     SetMode = 0x13,
     MoveLine = 0x15,
     MoveJoint = 0x17,
     MoveHome = 0x19,
+    SleepInstruction = 0x1A,
+    MoveCircle = 0x1B,
     SetTcpJerk = 0x1F,
     SetTcpMaxAcc = 0x20,
     SetJointJerk = 0x21,
     SetJointMaxAcc = 0x22,
     SetTcpOffset = 0x23,
+    SetLoadParam = 0x24,
+    SetCollisSens = 0x25,
+    SetTeachSens = 0x26,
+    CleanConf = 0x27,
+    SaveConf = 0x28,
     GetTcpPose = 0x29,
-    GetJointPos = 0x2A
+    GetJointPos = 0x2A,
+    SetGravityDir = 0x33,
+    GetJointTau = 0x37,
+    SetSafeLevel = 0x38,
+    GetSafeLevel = 0x39,
+    SetAllowApproxMotion = 0x42,
+    ReportTauOrI = 0x46,
+    SetCartVContinue = 0x50
 }

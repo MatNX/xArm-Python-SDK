@@ -45,6 +45,38 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetMode(mode, detectionParam, timeout ?? _defaultTimeout);
     }
 
+    public void SetBrake(int axisId, bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetBrake(axisId, enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetReportTorqueOrCurrent(bool reportCurrent, TimeSpan? timeout = null)
+    {
+        _uxbus.SetReportTorqueOrCurrent(reportCurrent, timeout ?? _defaultTimeout);
+    }
+
+    public bool GetReportTorqueOrCurrent(TimeSpan? timeout = null)
+    {
+        var mode = _uxbus.GetReportTorqueOrCurrent(timeout ?? _defaultTimeout);
+        return mode != 0;
+    }
+
+    public void SetCartesianVelocityContinuous(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetCartesianVelocityContinuous(enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetAllowApproxMotion(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetAllowApproxMotion(enable, timeout ?? _defaultTimeout);
+    }
+
+    public bool GetAllowApproxMotion(TimeSpan? timeout = null)
+    {
+        var mode = _uxbus.GetAllowApproxMotion(timeout ?? _defaultTimeout);
+        return mode != 0;
+    }
+
     public void SetState(int state, TimeSpan? timeout = null)
     {
         _uxbus.SetState(state, timeout ?? _defaultTimeout);
@@ -101,6 +133,35 @@ public class Lite6ArmClient : IDisposable
         _uxbus.MoveHome((float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
+    public void MoveCircle(Pose pose1, Pose pose2, double speed, double acceleration, double time, double percent, TimeSpan? timeout = null)
+    {
+        var pose1Payload = new[]
+        {
+            (float)pose1.X,
+            (float)pose1.Y,
+            (float)pose1.Z,
+            (float)pose1.Roll,
+            (float)pose1.Pitch,
+            (float)pose1.Yaw
+        };
+        var pose2Payload = new[]
+        {
+            (float)pose2.X,
+            (float)pose2.Y,
+            (float)pose2.Z,
+            (float)pose2.Roll,
+            (float)pose2.Pitch,
+            (float)pose2.Yaw
+        };
+
+        _uxbus.MoveCircle(pose1Payload, pose2Payload, (float)speed, (float)acceleration, (float)time, (float)percent, timeout ?? _defaultTimeout);
+    }
+
+    public void SleepInstruction(double seconds, TimeSpan? timeout = null)
+    {
+        _uxbus.SleepInstruction((float)seconds, timeout ?? _defaultTimeout);
+    }
+
     public void SetTcpOffset(Pose offset, TimeSpan? timeout = null)
     {
         var payload = new[]
@@ -136,6 +197,48 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetJointMaxAcceleration((float)maxAcceleration, timeout ?? _defaultTimeout);
     }
 
+    public void SetTcpLoad(double mass, Vector3 centerOfGravity, TimeSpan? timeout = null)
+    {
+        var com = new[] { (float)centerOfGravity.X, (float)centerOfGravity.Y, (float)centerOfGravity.Z };
+        _uxbus.SetTcpLoad((float)mass, com, timeout ?? _defaultTimeout);
+    }
+
+    public void SetCollisionSensitivity(int sensitivity, TimeSpan? timeout = null)
+    {
+        _uxbus.SetCollisionSensitivity((byte)sensitivity, timeout ?? _defaultTimeout);
+    }
+
+    public void SetTeachSensitivity(int sensitivity, TimeSpan? timeout = null)
+    {
+        _uxbus.SetTeachSensitivity((byte)sensitivity, timeout ?? _defaultTimeout);
+    }
+
+    public void SetGravityDirection(Vector3 gravityDirection, TimeSpan? timeout = null)
+    {
+        var gravity = new[] { (float)gravityDirection.X, (float)gravityDirection.Y, (float)gravityDirection.Z };
+        _uxbus.SetGravityDirection(gravity, timeout ?? _defaultTimeout);
+    }
+
+    public void SetSafeLevel(int level, TimeSpan? timeout = null)
+    {
+        _uxbus.SetSafeLevel((byte)level, timeout ?? _defaultTimeout);
+    }
+
+    public int GetSafeLevel(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetSafeLevel(timeout ?? _defaultTimeout);
+    }
+
+    public void CleanConfiguration(TimeSpan? timeout = null)
+    {
+        _uxbus.CleanConfiguration(timeout ?? _defaultTimeout);
+    }
+
+    public void SaveConfiguration(TimeSpan? timeout = null)
+    {
+        _uxbus.SaveConfiguration(timeout ?? _defaultTimeout);
+    }
+
     public JointPositions GetJointPositions()
     {
         var joints = _uxbus.GetJointPositions(_defaultTimeout);
@@ -146,6 +249,18 @@ public class Lite6ArmClient : IDisposable
             joints.Length > 3 ? joints[3] : 0,
             joints.Length > 4 ? joints[4] : 0,
             joints.Length > 5 ? joints[5] : 0);
+    }
+
+    public JointTorques GetJointTorques()
+    {
+        var torques = _uxbus.GetJointTorques(_defaultTimeout);
+        return new JointTorques(
+            torques.Length > 0 ? torques[0] : 0,
+            torques.Length > 1 ? torques[1] : 0,
+            torques.Length > 2 ? torques[2] : 0,
+            torques.Length > 3 ? torques[3] : 0,
+            torques.Length > 4 ? torques[4] : 0,
+            torques.Length > 5 ? torques[5] : 0);
     }
 
     public Pose GetPose()
