@@ -1,21 +1,21 @@
-using System.Globalization;
-
 namespace XArm.Lite6;
 
 public class Lite6ArmClient : IDisposable
 {
     private readonly IArmTransport _transport;
     private readonly TimeSpan _defaultTimeout;
+    private readonly UxbusClient _uxbus;
 
     public Lite6ArmClient(IArmTransport? transport = null, TimeSpan? defaultTimeout = null)
     {
         _transport = transport ?? new TcpArmTransport();
         _defaultTimeout = defaultTimeout ?? TimeSpan.FromSeconds(2);
+        _uxbus = new UxbusClient(_transport);
     }
 
     public bool IsConnected => _transport.IsConnected;
 
-    public void Connect(string host, int port = 30001, TimeSpan? timeout = null)
+    public void Connect(string host, int port = 502, TimeSpan? timeout = null)
     {
         _transport.Connect(host, port, timeout ?? _defaultTimeout);
     }
@@ -25,150 +25,114 @@ public class Lite6ArmClient : IDisposable
         _transport.Disconnect();
     }
 
+    public void MotionEnable(bool enable, int servoId = 8, TimeSpan? timeout = null)
+    {
+        _uxbus.MotionEnable(servoId, enable, timeout ?? _defaultTimeout);
+    }
+
     public void EnableMotion()
     {
-        SendCommand("MOTION_ENABLE 1");
+        MotionEnable(true);
     }
 
     public void DisableMotion()
     {
-        SendCommand("MOTION_ENABLE 0");
+        MotionEnable(false);
     }
 
-    public void SetMode(int mode)
+    public void SetMode(int mode, int? detectionParam = null, TimeSpan? timeout = null)
     {
-        SendCommand($"SET_MODE {mode}");
+        _uxbus.SetMode(mode, detectionParam, timeout ?? _defaultTimeout);
     }
 
-    public void SetState(int state)
+    public void SetState(int state, TimeSpan? timeout = null)
     {
-        SendCommand($"SET_STATE {state}");
+        _uxbus.SetState(state, timeout ?? _defaultTimeout);
     }
 
-    public void MoveJoints(JointPositions joints, double speed, double acceleration)
+    public void MoveJoints(JointPositions joints, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
     {
-        var command = string.Format(
-            CultureInfo.InvariantCulture,
-            "MOVE_J {0:F4} {1:F4} {2:F4} {3:F4} {4:F4} {5:F4} {6:F3} {7:F3}",
-            joints.J1,
-            joints.J2,
-            joints.J3,
-            joints.J4,
-            joints.J5,
-            joints.J6,
-            speed,
-            acceleration);
-        SendCommand(command);
+        var payload = new[]
+        {
+            (float)joints.J1,
+            (float)joints.J2,
+            (float)joints.J3,
+            (float)joints.J4,
+            (float)joints.J5,
+            (float)joints.J6,
+            0f
+        };
+
+        _uxbus.MoveJoint(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
-    public void MoveLinear(Pose pose, double speed, double acceleration)
+    public void MoveLinear(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
     {
-        var command = string.Format(
-            CultureInfo.InvariantCulture,
-            "MOVE_L {0:F3} {1:F3} {2:F3} {3:F3} {4:F3} {5:F3} {6:F3} {7:F3}",
-            pose.X,
-            pose.Y,
-            pose.Z,
-            pose.Roll,
-            pose.Pitch,
-            pose.Yaw,
-            speed,
-            acceleration);
-        SendCommand(command);
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw
+        };
+
+        _uxbus.MoveLine(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
     public JointPositions GetJointPositions()
     {
-        var response = SendCommand("GET_JOINTS");
-        return ParseJoints(response);
+        var joints = _uxbus.GetJointPositions(_defaultTimeout);
+        return new JointPositions(
+            joints.Length > 0 ? joints[0] : 0,
+            joints.Length > 1 ? joints[1] : 0,
+            joints.Length > 2 ? joints[2] : 0,
+            joints.Length > 3 ? joints[3] : 0,
+            joints.Length > 4 ? joints[4] : 0,
+            joints.Length > 5 ? joints[5] : 0);
     }
 
     public Pose GetPose()
     {
-        var response = SendCommand("GET_POSE");
-        return ParsePose(response);
+        var pose = _uxbus.GetTcpPose(_defaultTimeout);
+        return new Pose(
+            pose.Length > 0 ? pose[0] : 0,
+            pose.Length > 1 ? pose[1] : 0,
+            pose.Length > 2 ? pose[2] : 0,
+            pose.Length > 3 ? pose[3] : 0,
+            pose.Length > 4 ? pose[4] : 0,
+            pose.Length > 5 ? pose[5] : 0);
+    }
+
+    public int GetState(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetState(timeout ?? _defaultTimeout);
+    }
+
+    public (int ErrorCode, int WarningCode) GetErrorWarning(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetErrorWarning(timeout ?? _defaultTimeout);
     }
 
     public ArmStatus GetStatus()
     {
-        var response = SendCommand("GET_STATUS");
-        var parts = response.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 5)
-        {
-            throw new FormatException("Unexpected status response.");
-        }
-
+        var state = GetState();
+        var (error, warning) = GetErrorWarning();
         return new ArmStatus(
             IsConnected,
-            parts[0] == "1",
-            int.Parse(parts[1], CultureInfo.InvariantCulture),
-            int.Parse(parts[2], CultureInfo.InvariantCulture),
-            double.Parse(parts[3], CultureInfo.InvariantCulture),
-            parts.Length > 4 ? parts[4] : null);
-    }
-
-    public double GetBatteryVoltage()
-    {
-        var response = SendCommand("GET_BATTERY");
-        return double.Parse(response, CultureInfo.InvariantCulture);
+            state,
+            error,
+            warning);
     }
 
     public string GetFirmwareVersion()
     {
-        return SendCommand("GET_FIRMWARE");
-    }
-
-    public void Stop()
-    {
-        SendCommand("STOP");
-    }
-
-    public void ClearError()
-    {
-        SendCommand("CLEAR_ERROR");
+        return _uxbus.GetVersion(_defaultTimeout);
     }
 
     public void Dispose()
     {
         _transport.Dispose();
-    }
-
-    private string SendCommand(string command, TimeSpan? timeout = null)
-    {
-        return _transport.SendCommand(command, timeout ?? _defaultTimeout);
-    }
-
-    private static JointPositions ParseJoints(string response)
-    {
-        var parts = response.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 6)
-        {
-            throw new FormatException("Expected 6 joint values.");
-        }
-
-        return new JointPositions(
-            double.Parse(parts[0], CultureInfo.InvariantCulture),
-            double.Parse(parts[1], CultureInfo.InvariantCulture),
-            double.Parse(parts[2], CultureInfo.InvariantCulture),
-            double.Parse(parts[3], CultureInfo.InvariantCulture),
-            double.Parse(parts[4], CultureInfo.InvariantCulture),
-            double.Parse(parts[5], CultureInfo.InvariantCulture));
-    }
-
-    private static Pose ParsePose(string response)
-    {
-        var parts = response.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 6)
-        {
-            throw new FormatException("Expected 6 pose values.");
-        }
-
-        return new Pose(
-            double.Parse(parts[0], CultureInfo.InvariantCulture),
-            double.Parse(parts[1], CultureInfo.InvariantCulture),
-            double.Parse(parts[2], CultureInfo.InvariantCulture),
-            double.Parse(parts[3], CultureInfo.InvariantCulture),
-            double.Parse(parts[4], CultureInfo.InvariantCulture),
-            double.Parse(parts[5], CultureInfo.InvariantCulture));
     }
 }
