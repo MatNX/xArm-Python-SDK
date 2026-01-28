@@ -87,6 +87,30 @@ internal sealed class UxbusClient
         return Encoding.ASCII.GetString(response, 0, length).Trim();
     }
 
+    public string GetRobotSerialNumber(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetRobotSn, 40, timeout);
+        var end = Array.IndexOf(response, (byte)0);
+        var length = end >= 0 ? end : response.Length;
+        return Encoding.ASCII.GetString(response, 0, length).Trim();
+    }
+
+    public int GetCommandCount(TimeSpan timeout)
+    {
+        var response = GetNu16(UxbusRegister.GetCmdnum, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public void CleanError(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.CleanErr, Array.Empty<byte>(), timeout);
+    }
+
+    public void CleanWarning(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.CleanWar, Array.Empty<byte>(), timeout);
+    }
+
     public float[] GetJointPositions(TimeSpan timeout)
     {
         return GetFp32(UxbusRegister.GetJointPos, 7, timeout);
@@ -117,6 +141,12 @@ internal sealed class UxbusClient
         SetFp32(UxbusRegister.MoveLine, payload, timeout);
     }
 
+    public void MoveHome(float speed, float acceleration, float time, TimeSpan timeout)
+    {
+        var payload = new[] { speed, acceleration, time };
+        SetFp32(UxbusRegister.MoveHome, payload, timeout);
+    }
+
     private void SetNu8(UxbusRegister register, byte[] data, TimeSpan timeout)
     {
         var response = SendRequest((byte)register, data, timeout);
@@ -134,6 +164,24 @@ internal sealed class UxbusClient
 
         var result = new byte[count];
         Buffer.BlockCopy(response.Payload, 0, result, 0, count);
+        return result;
+    }
+
+    private ushort[] GetNu16(UxbusRegister register, int count, TimeSpan timeout)
+    {
+        var response = SendRequest((byte)register, Array.Empty<byte>(), timeout);
+        response.EnsureSuccess();
+        if (response.Payload.Length < count * 2)
+        {
+            return Array.Empty<ushort>();
+        }
+
+        var result = new ushort[count];
+        for (var i = 0; i < count; i++)
+        {
+            result[i] = BinaryPrimitives.ReadUInt16BigEndian(response.Payload.AsSpan(i * 2, 2));
+        }
+
         return result;
     }
 
@@ -262,13 +310,18 @@ internal readonly record struct UxbusResponse(UxbusState State, bool IsReady, by
 internal enum UxbusRegister : byte
 {
     GetVersion = 0x01,
+    GetRobotSn = 0x02,
     MotionEnable = 0x0B,
     SetState = 0x0C,
     GetState = 0x0D,
+    GetCmdnum = 0x0E,
     GetError = 0x0F,
+    CleanErr = 0x10,
+    CleanWar = 0x11,
     SetMode = 0x13,
     MoveLine = 0x15,
     MoveJoint = 0x17,
+    MoveHome = 0x19,
     GetTcpPose = 0x29,
     GetJointPos = 0x2A
 }
