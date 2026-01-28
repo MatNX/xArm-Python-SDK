@@ -6,11 +6,9 @@ public record Pose(double X, double Y, double Z, double Roll, double Pitch, doub
 
 public record ArmStatus(
     bool IsConnected,
-    bool IsMoving,
-    int Mode,
     int State,
-    double BatteryVoltage,
-    string? FirmwareVersion);
+    int ErrorCode,
+    int WarningCode);
 
 public enum MotionType
 {

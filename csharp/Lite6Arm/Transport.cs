@@ -1,5 +1,4 @@
 using System.Net.Sockets;
-using System.Text;
 
 namespace XArm.Lite6;
 
@@ -8,7 +7,7 @@ public interface IArmTransport : IDisposable
     bool IsConnected { get; }
     void Connect(string host, int port, TimeSpan timeout);
     void Disconnect();
-    string SendCommand(string command, TimeSpan timeout);
+    byte[] SendAndReceive(byte[] request, TimeSpan timeout);
 }
 
 public sealed class TcpArmTransport : IArmTransport
@@ -45,31 +44,55 @@ public sealed class TcpArmTransport : IArmTransport
         _client = null;
     }
 
-    public string SendCommand(string command, TimeSpan timeout)
+    public byte[] SendAndReceive(byte[] request, TimeSpan timeout)
     {
         if (_stream is null)
         {
             throw new InvalidOperationException("Not connected.");
         }
 
-        var payload = Encoding.ASCII.GetBytes(command + "\n");
-        _stream.Write(payload, 0, payload.Length);
+        _stream.WriteTimeout = (int)timeout.TotalMilliseconds;
+        _stream.ReadTimeout = (int)timeout.TotalMilliseconds;
+
+        _stream.Write(request, 0, request.Length);
         _stream.Flush();
 
-        _stream.ReadTimeout = (int)timeout.TotalMilliseconds;
-        using var buffer = new MemoryStream();
-        var temp = new byte[256];
-        int read;
-        do
-        {
-            read = _stream.Read(temp, 0, temp.Length);
-            if (read > 0)
-            {
-                buffer.Write(temp, 0, read);
-            }
-        } while (read > 0 && !_stream.DataAvailable);
+        var header = ReadExact(7);
+        var length = (header[4] << 8) | header[5];
+        var remaining = Math.Max(0, length - 1);
+        var payload = remaining > 0 ? ReadExact(remaining) : Array.Empty<byte>();
 
-        return Encoding.ASCII.GetString(buffer.ToArray()).Trim();
+        var response = new byte[header.Length + payload.Length];
+        Buffer.BlockCopy(header, 0, response, 0, header.Length);
+        if (payload.Length > 0)
+        {
+            Buffer.BlockCopy(payload, 0, response, header.Length, payload.Length);
+        }
+
+        return response;
+    }
+
+    private byte[] ReadExact(int count)
+    {
+        if (_stream is null)
+        {
+            throw new InvalidOperationException("Not connected.");
+        }
+
+        var buffer = new byte[count];
+        var readTotal = 0;
+        while (readTotal < count)
+        {
+            var read = _stream.Read(buffer, readTotal, count - readTotal);
+            if (read == 0)
+            {
+                throw new IOException("Connection closed while reading data.");
+            }
+
+            readTotal += read;
+        }
+
+        return buffer;
     }
 
     public void Dispose()

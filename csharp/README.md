@@ -1,7 +1,8 @@
 # Lite6Arm C# Library (Experimental)
 
 This folder contains a minimal C# class library that mirrors common Lite6 robotic arm
-operations such as connecting, sending motion commands, and reading state.
+operations such as connecting, sending motion commands, and reading state. The implementation
+now uses the same UXBUS Modbus/TCP framing as the Python SDK for the core commands.
 
 ## Usage example
 
@@ -17,10 +18,12 @@ arm.SetState(0);
 arm.MoveJoints(new JointPositions(0, 0, 0, 0, 0, 0), speed: 0.5, acceleration: 0.2);
 var pose = arm.GetPose();
 var status = arm.GetStatus();
+var version = arm.GetFirmwareVersion();
 ```
 
 ## Notes
 
-* The transport sends line-delimited ASCII commands. Replace the command strings
-  with real Lite6 protocol messages as needed.
-* This library is intended as a starting point for a full C# implementation.
+* Lite6 uses the UXBUS TCP control port (default 502) for commands; the client mirrors the
+  Python SDK's Modbus/TCP framing for motion, state, and pose queries.
+* This library intentionally covers a small, practical subset of the Python SDK. Extend it
+  with additional UXBUS registers as needed.
