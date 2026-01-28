@@ -66,6 +66,93 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetCartesianVelocityContinuous(enable, timeout ?? _defaultTimeout);
     }
 
+    public void SetReducedMode(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetReducedMode(enable, timeout ?? _defaultTimeout);
+    }
+
+    public bool GetReducedMode(TimeSpan? timeout = null)
+    {
+        var mode = _uxbus.GetReducedMode(timeout ?? _defaultTimeout);
+        return mode != 0;
+    }
+
+    public void SetReducedLineSpeed(double speed, TimeSpan? timeout = null)
+    {
+        _uxbus.SetReducedLineSpeed((float)speed, timeout ?? _defaultTimeout);
+    }
+
+    public void SetReducedJointSpeed(double speed, TimeSpan? timeout = null)
+    {
+        _uxbus.SetReducedJointSpeed((float)speed, timeout ?? _defaultTimeout);
+    }
+
+    public ReducedState GetReducedState(bool includeJointRanges = false, TimeSpan? timeout = null)
+    {
+        return _uxbus.GetReducedState(includeJointRanges, timeout ?? _defaultTimeout);
+    }
+
+    public void SetReducedJointRange(double[] ranges, TimeSpan? timeout = null)
+    {
+        var payload = new float[Math.Min(ranges.Length, 14)];
+        for (var i = 0; i < payload.Length; i++)
+        {
+            payload[i] = (float)ranges[i];
+        }
+
+        _uxbus.SetReducedJointRange(payload, timeout ?? _defaultTimeout);
+    }
+
+    public void SetFenseOn(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetFenseOn(enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetCollisionRebound(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetCollisionRebound(enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetXyzLimits(int[] xyzLimits, TimeSpan? timeout = null)
+    {
+        _uxbus.SetXyzLimits(xyzLimits, timeout ?? _defaultTimeout);
+    }
+
+    public void SetTimer(int secondsLater, int timerId, int functionCode, int param1 = 0, int param2 = 0, TimeSpan? timeout = null)
+    {
+        _uxbus.SetTimer(secondsLater, timerId, functionCode, param1, param2, timeout ?? _defaultTimeout);
+    }
+
+    public void CancelTimer(int timerId, TimeSpan? timeout = null)
+    {
+        _uxbus.CancelTimer(timerId, timeout ?? _defaultTimeout);
+    }
+
+    public void SetWorldOffset(Pose offset, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)offset.X,
+            (float)offset.Y,
+            (float)offset.Z,
+            (float)offset.Roll,
+            (float)offset.Pitch,
+            (float)offset.Yaw
+        };
+
+        _uxbus.SetWorldOffset(payload, timeout ?? _defaultTimeout);
+    }
+
+    public void CounterReset(TimeSpan? timeout = null)
+    {
+        _uxbus.CounterReset(timeout ?? _defaultTimeout);
+    }
+
+    public void CounterPlus(TimeSpan? timeout = null)
+    {
+        _uxbus.CounterPlus(timeout ?? _defaultTimeout);
+    }
+
     public void SetAllowApproxMotion(bool enable, TimeSpan? timeout = null)
     {
         _uxbus.SetAllowApproxMotion(enable, timeout ?? _defaultTimeout);
@@ -126,6 +213,37 @@ public class Lite6ArmClient : IDisposable
         };
 
         _uxbus.MoveLine(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveServoJoints(JointPositions joints, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)joints.J1,
+            (float)joints.J2,
+            (float)joints.J3,
+            (float)joints.J4,
+            (float)joints.J5,
+            (float)joints.J6,
+            0f
+        };
+
+        _uxbus.MoveServoJoint(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveServoLinear(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw
+        };
+
+        _uxbus.MoveServoCartesian(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
     public void MoveHome(double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
