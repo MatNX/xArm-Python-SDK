@@ -122,6 +122,101 @@ internal sealed class UxbusClient
         SetNu8(UxbusRegister.SetCartVContinue, new[] { (byte)(enable ? 1 : 0) }, timeout);
     }
 
+    public void SetReducedMode(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetReducedMode, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public int GetReducedMode(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetReducedMode, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public void SetReducedLineSpeed(float speed, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetReducedTrsv, new[] { speed }, timeout);
+    }
+
+    public void SetReducedJointSpeed(float speed, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetReducedP2pv, new[] { speed }, timeout);
+    }
+
+    public ReducedState GetReducedState(bool includeJointRanges, TimeSpan timeout)
+    {
+        var length = includeJointRanges ? 79 : 21;
+        var payload = GetNu8(UxbusRegister.GetReducedState, length, timeout);
+        var reducedMode = payload.Length > 0 && payload[0] != 0;
+        var boundary = ReadInt16BigEndian(payload, 1, 6);
+        var tcpSpeed = ReadSingleLittleEndian(payload, 13);
+        var jointSpeed = ReadSingleLittleEndian(payload, 17);
+
+        double[]? jointRanges = null;
+        bool? fenseOn = null;
+        bool? collisionRebound = null;
+
+        if (includeJointRanges && payload.Length >= 79)
+        {
+            jointRanges = ReadSinglesLittleEndian(payload, 21, 14);
+            fenseOn = payload[77] != 0;
+            collisionRebound = payload[78] != 0;
+        }
+
+        return new ReducedState(reducedMode, boundary, tcpSpeed, jointSpeed, jointRanges, fenseOn, collisionRebound);
+    }
+
+    public void SetReducedJointRange(float[] ranges, TimeSpan timeout)
+    {
+        var payload = new float[14];
+        Array.Copy(ranges, payload, Math.Min(ranges.Length, 14));
+        SetFp32(UxbusRegister.SetReducedJRange, payload, timeout);
+    }
+
+    public void SetFenseOn(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetFenseOn, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SetCollisionRebound(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetCollisReb, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SetXyzLimits(int[] xyzLimits, TimeSpan timeout)
+    {
+        var payload = new int[6];
+        Array.Copy(xyzLimits, payload, Math.Min(xyzLimits.Length, 6));
+        SetInt32(UxbusRegister.SetLimitXyz, payload, timeout);
+    }
+
+    public void SetTimer(int secondsLater, int timerId, int functionCode, int param1, int param2, TimeSpan timeout)
+    {
+        SetInt32(UxbusRegister.SetTimer, new[] { secondsLater, timerId, functionCode, param1, param2 }, timeout);
+    }
+
+    public void CancelTimer(int timerId, TimeSpan timeout)
+    {
+        SetInt32(UxbusRegister.CancelTimer, new[] { timerId }, timeout);
+    }
+
+    public void SetWorldOffset(float[] offset, TimeSpan timeout)
+    {
+        var payload = new float[6];
+        Array.Copy(offset, payload, Math.Min(offset.Length, 6));
+        SetFp32(UxbusRegister.SetWorldOffset, payload, timeout);
+    }
+
+    public void CounterReset(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.CounterReset, Array.Empty<byte>(), timeout);
+    }
+
+    public void CounterPlus(TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.CounterPlus, Array.Empty<byte>(), timeout);
+    }
+
     public void SetAllowApproxMotion(bool enable, TimeSpan timeout)
     {
         SetNu8(UxbusRegister.SetAllowApproxMotion, new[] { (byte)(enable ? 1 : 0) }, timeout);
@@ -171,6 +266,26 @@ internal sealed class UxbusClient
         payload[7] = acceleration;
         payload[8] = time;
         SetFp32(UxbusRegister.MoveLine, payload, timeout);
+    }
+
+    public void MoveServoJoint(float[] joints, float speed, float acceleration, float time, TimeSpan timeout)
+    {
+        var payload = new float[10];
+        Array.Copy(joints, payload, Math.Min(joints.Length, 7));
+        payload[7] = speed;
+        payload[8] = acceleration;
+        payload[9] = time;
+        SetFp32(UxbusRegister.MoveServoJoint, payload, timeout);
+    }
+
+    public void MoveServoCartesian(float[] pose, float speed, float acceleration, float time, TimeSpan timeout)
+    {
+        var payload = new float[9];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        payload[8] = time;
+        SetFp32(UxbusRegister.MoveServoCart, payload, timeout);
     }
 
     public void MoveHome(float speed, float acceleration, float time, TimeSpan timeout)
@@ -274,6 +389,18 @@ internal sealed class UxbusClient
         return GetFp32(UxbusRegister.GetJointTau, 7, timeout);
     }
 
+    private void SetInt32(UxbusRegister register, int[] values, TimeSpan timeout)
+    {
+        var payload = new byte[values.Length * 4];
+        for (var i = 0; i < values.Length; i++)
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(i * 4, 4), values[i]);
+        }
+
+        var response = SendRequest((byte)register, payload, timeout);
+        response.EnsureSuccess();
+    }
+
     private void SetNu8(UxbusRegister register, byte[] data, TimeSpan timeout)
     {
         var response = SendRequest((byte)register, data, timeout);
@@ -337,6 +464,50 @@ internal sealed class UxbusClient
         }
 
         return values;
+    }
+
+    private static short[] ReadInt16BigEndian(byte[] buffer, int start, int count)
+    {
+        var result = new short[count];
+        for (var i = 0; i < count; i++)
+        {
+            var offset = start + i * 2;
+            if (offset + 1 >= buffer.Length)
+            {
+                return result;
+            }
+
+            result[i] = BinaryPrimitives.ReadInt16BigEndian(buffer.AsSpan(offset, 2));
+        }
+
+        return result;
+    }
+
+    private static double ReadSingleLittleEndian(byte[] buffer, int start)
+    {
+        if (start + 3 >= buffer.Length)
+        {
+            return 0;
+        }
+
+        return BinaryPrimitives.ReadSingleLittleEndian(buffer.AsSpan(start, 4));
+    }
+
+    private static double[] ReadSinglesLittleEndian(byte[] buffer, int start, int count)
+    {
+        var result = new double[count];
+        for (var i = 0; i < count; i++)
+        {
+            var offset = start + i * 4;
+            if (offset + 3 >= buffer.Length)
+            {
+                return result;
+            }
+
+            result[i] = BinaryPrimitives.ReadSingleLittleEndian(buffer.AsSpan(offset, 4));
+        }
+
+        return result;
     }
 
     private UxbusResponse SendRequest(byte functionCode, byte[] payload, TimeSpan timeout)
@@ -454,6 +625,8 @@ internal enum UxbusRegister : byte
     MoveHome = 0x19,
     SleepInstruction = 0x1A,
     MoveCircle = 0x1B,
+    MoveServoJoint = 0x1D,
+    MoveServoCart = 0x1E,
     SetTcpJerk = 0x1F,
     SetTcpMaxAcc = 0x20,
     SetJointJerk = 0x21,
@@ -466,11 +639,25 @@ internal enum UxbusRegister : byte
     SaveConf = 0x28,
     GetTcpPose = 0x29,
     GetJointPos = 0x2A,
+    SetReducedTrsv = 0x2F,
+    SetReducedP2pv = 0x30,
+    GetReducedMode = 0x31,
+    SetReducedMode = 0x32,
     SetGravityDir = 0x33,
+    SetLimitXyz = 0x34,
+    GetReducedState = 0x35,
     GetJointTau = 0x37,
     SetSafeLevel = 0x38,
     GetSafeLevel = 0x39,
+    SetReducedJRange = 0x3A,
+    SetFenseOn = 0x3B,
+    SetCollisReb = 0x3C,
     SetAllowApproxMotion = 0x42,
     ReportTauOrI = 0x46,
+    SetTimer = 0x47,
+    CancelTimer = 0x48,
+    SetWorldOffset = 0x49,
+    CounterReset = 0x4A,
+    CounterPlus = 0x4B,
     SetCartVContinue = 0x50
 }

@@ -14,6 +14,15 @@ public record ArmStatus(
     int ErrorCode,
     int WarningCode);
 
+public record ReducedState(
+    bool ReducedModeEnabled,
+    short[] TcpBoundary,
+    double TcpSpeed,
+    double JointSpeed,
+    double[]? JointRanges,
+    bool? FenseEnabled,
+    bool? CollisionReboundEnabled);
+
 public enum MotionType
 {
     Joint,
