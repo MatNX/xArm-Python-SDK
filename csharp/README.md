@@ -15,6 +15,11 @@ arm.EnableMotion();
 arm.SetMode(0);
 arm.SetState(0);
 arm.CleanError();
+arm.SetTcpOffset(new Pose(0, 0, 0, 0, 0, 0));
+arm.SetTcpJerk(0.5);
+arm.SetTcpMaxAcceleration(0.5);
+arm.SetJointJerk(0.5);
+arm.SetJointMaxAcceleration(0.5);
 
 arm.MoveJoints(new JointPositions(0, 0, 0, 0, 0, 0), speed: 0.5, acceleration: 0.2);
 arm.MoveHome(speed: 0.5, acceleration: 0.2);

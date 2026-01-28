@@ -147,6 +147,33 @@ internal sealed class UxbusClient
         SetFp32(UxbusRegister.MoveHome, payload, timeout);
     }
 
+    public void SetTcpOffset(float[] offset, TimeSpan timeout)
+    {
+        var payload = new float[6];
+        Array.Copy(offset, payload, Math.Min(offset.Length, 6));
+        SetFp32(UxbusRegister.SetTcpOffset, payload, timeout);
+    }
+
+    public void SetTcpJerk(float jerk, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetTcpJerk, new[] { jerk }, timeout);
+    }
+
+    public void SetTcpMaxAcceleration(float maxAcceleration, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetTcpMaxAcc, new[] { maxAcceleration }, timeout);
+    }
+
+    public void SetJointJerk(float jerk, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetJointJerk, new[] { jerk }, timeout);
+    }
+
+    public void SetJointMaxAcceleration(float maxAcceleration, TimeSpan timeout)
+    {
+        SetFp32(UxbusRegister.SetJointMaxAcc, new[] { maxAcceleration }, timeout);
+    }
+
     private void SetNu8(UxbusRegister register, byte[] data, TimeSpan timeout)
     {
         var response = SendRequest((byte)register, data, timeout);
@@ -322,6 +349,11 @@ internal enum UxbusRegister : byte
     MoveLine = 0x15,
     MoveJoint = 0x17,
     MoveHome = 0x19,
+    SetTcpJerk = 0x1F,
+    SetTcpMaxAcc = 0x20,
+    SetJointJerk = 0x21,
+    SetJointMaxAcc = 0x22,
+    SetTcpOffset = 0x23,
     GetTcpPose = 0x29,
     GetJointPos = 0x2A
 }

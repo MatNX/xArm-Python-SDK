@@ -101,6 +101,41 @@ public class Lite6ArmClient : IDisposable
         _uxbus.MoveHome((float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
+    public void SetTcpOffset(Pose offset, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)offset.X,
+            (float)offset.Y,
+            (float)offset.Z,
+            (float)offset.Roll,
+            (float)offset.Pitch,
+            (float)offset.Yaw
+        };
+
+        _uxbus.SetTcpOffset(payload, timeout ?? _defaultTimeout);
+    }
+
+    public void SetTcpJerk(double jerk, TimeSpan? timeout = null)
+    {
+        _uxbus.SetTcpJerk((float)jerk, timeout ?? _defaultTimeout);
+    }
+
+    public void SetTcpMaxAcceleration(double maxAcceleration, TimeSpan? timeout = null)
+    {
+        _uxbus.SetTcpMaxAcceleration((float)maxAcceleration, timeout ?? _defaultTimeout);
+    }
+
+    public void SetJointJerk(double jerk, TimeSpan? timeout = null)
+    {
+        _uxbus.SetJointJerk((float)jerk, timeout ?? _defaultTimeout);
+    }
+
+    public void SetJointMaxAcceleration(double maxAcceleration, TimeSpan? timeout = null)
+    {
+        _uxbus.SetJointMaxAcceleration((float)maxAcceleration, timeout ?? _defaultTimeout);
+    }
+
     public JointPositions GetJointPositions()
     {
         var joints = _uxbus.GetJointPositions(_defaultTimeout);
