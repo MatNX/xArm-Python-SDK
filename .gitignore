@@ -10,3 +10,8 @@ example/wrapper/bak/
 example/wrapper/robot.conf
 bak-xarm/
 .vscode/
+/csharp/Lite6Arm/bin/Debug/net10.0
+/csharp/Lite6Arm/obj
+/.vs/xArm-Python-SDK.slnx/FileContentIndex
+/csharp/Lite6Arm/.vs/Lite6Arm/FileContentIndex
+/.vs
