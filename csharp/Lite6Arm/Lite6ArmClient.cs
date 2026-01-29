@@ -1,3 +1,7 @@
+using System.Buffers.Binary;
+using System.Text;
+using System.Text.Json;
+
 namespace XArm.Lite6;
 
 public class Lite6ArmClient : IDisposable
@@ -5,6 +9,7 @@ public class Lite6ArmClient : IDisposable
     private readonly IArmTransport _transport;
     private readonly TimeSpan _defaultTimeout;
     private readonly UxbusClient _uxbus;
+    private string? _controllerHost;
 
     public Lite6ArmClient(IArmTransport? transport = null, TimeSpan? defaultTimeout = null)
     {
@@ -18,11 +23,13 @@ public class Lite6ArmClient : IDisposable
     public void Connect(string host, int port = 502, TimeSpan? timeout = null)
     {
         _transport.Connect(host, port, timeout ?? _defaultTimeout);
+        _controllerHost = host;
     }
 
     public void Disconnect()
     {
         _transport.Disconnect();
+        _controllerHost = null;
     }
 
     public void MotionEnable(bool enable, int servoId = 8, TimeSpan? timeout = null)
@@ -156,6 +163,132 @@ public class Lite6ArmClient : IDisposable
     public void CounterPlus(TimeSpan? timeout = null)
     {
         _uxbus.CounterPlus(timeout ?? _defaultTimeout);
+    }
+
+    public IReadOnlyList<TrajectoryInfo> GetTrajectories(string? host = null, TimeSpan? timeout = null)
+    {
+        var controllerHost = ResolveControllerHost(host);
+        var payload = JsonSerializer.Serialize(new { cmd = "xarm_list_trajs" });
+        using var document = PostJsonDocument($"http://{controllerHost}:18333/cmd", payload, timeout ?? _defaultTimeout);
+        if (!document.RootElement.TryGetProperty("res", out var res) || res.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("Invalid trajectory list response payload.");
+        }
+
+        var code = res[0].GetInt32();
+        if (code != 0)
+        {
+            throw new InvalidOperationException($"Failed to list trajectories (code {code}).");
+        }
+
+        if (res.GetArrayLength() < 2 || res[1].ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<TrajectoryInfo>();
+        }
+
+        var trajectories = new List<TrajectoryInfo>();
+        foreach (var item in res[1].EnumerateArray())
+        {
+            if (!item.TryGetProperty("name", out var nameElement) || nameElement.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var name = nameElement.GetString() ?? string.Empty;
+            var count = item.TryGetProperty("count", out var countElement) && countElement.TryGetDouble(out var countValue)
+                ? countValue
+                : 0;
+            trajectories.Add(new TrajectoryInfo(name, count / 100d));
+        }
+
+        return trajectories;
+    }
+
+    public void StartRecordTrajectory(TimeSpan? timeout = null)
+    {
+        _uxbus.SetRecordTrajectory(true, timeout ?? _defaultTimeout);
+    }
+
+    public void StopRecordTrajectory(string? filename = null, bool save = true, TimeSpan? timeout = null)
+    {
+        _uxbus.SetRecordTrajectory(false, timeout ?? _defaultTimeout);
+        if (save && !string.IsNullOrWhiteSpace(filename))
+        {
+            SaveRecordTrajectory(filename, wait: true, timeout);
+        }
+    }
+
+    public double GetRecordSeconds(TimeSpan? timeout = null)
+    {
+        var payload = _uxbus.GetCommonInfo(50, timeout ?? _defaultTimeout);
+        if (payload.Length < 4)
+        {
+            return 0;
+        }
+
+        return BinaryPrimitives.ReadSingleLittleEndian(payload.AsSpan(0, 4));
+    }
+
+    public void SaveRecordTrajectory(string filename, bool wait = true, TimeSpan? timeout = null)
+    {
+        var actualTimeout = timeout ?? _defaultTimeout;
+        _uxbus.SaveTrajectory(filename, actualTimeout);
+        if (wait)
+        {
+            WaitForTrajectoryStatus(TrajectoryRwStatus.SaveSuccess, TrajectoryRwStatus.SaveFailed, actualTimeout, filename, "save");
+        }
+    }
+
+    public void LoadTrajectory(string filename, bool wait = true, TimeSpan? timeout = null)
+    {
+        var actualTimeout = timeout ?? _defaultTimeout;
+        _uxbus.LoadTrajectory(filename, actualTimeout);
+        if (wait)
+        {
+            WaitForTrajectoryStatus(TrajectoryRwStatus.LoadSuccess, TrajectoryRwStatus.LoadFailed, actualTimeout, filename, "load");
+        }
+    }
+
+    public void PlaybackTrajectory(int times = 1, string? filename = null, bool wait = false, int doubleSpeed = 1, TimeSpan? timeout = null)
+    {
+        if (!string.IsNullOrWhiteSpace(filename))
+        {
+            LoadTrajectory(filename, true, timeout);
+        }
+
+        _uxbus.PlaybackTrajectory(times > 0 ? times : -1, doubleSpeed, timeout ?? _defaultTimeout);
+        if (wait)
+        {
+            WaitForPlaybackCompletion(timeout ?? _defaultTimeout);
+        }
+    }
+
+    public TrajectoryRwStatus GetTrajectoryRwStatus(TimeSpan? timeout = null)
+    {
+        var status = _uxbus.GetTrajectoryRwStatus(timeout ?? _defaultTimeout);
+        return Enum.IsDefined(typeof(TrajectoryRwStatus), status) ? (TrajectoryRwStatus)status : TrajectoryRwStatus.Idle;
+    }
+
+    public void DeleteTrajectory(string filename, string? host = null, TimeSpan? timeout = null)
+    {
+        var controllerHost = ResolveControllerHost(host);
+        var payload = JsonSerializer.Serialize(new
+        {
+            cmd = "Core.command.xarm_delete_traj",
+            args = Array.Empty<object>(),
+            kwargs = new { filename }
+        });
+        using var document = PostJsonDocument($"http://{controllerHost}:18333/v2/api", payload, timeout ?? _defaultTimeout);
+        if (!document.RootElement.TryGetProperty("code", out var codeElement))
+        {
+            throw new InvalidOperationException("Invalid delete trajectory response payload.");
+        }
+
+        var code = codeElement.GetInt32();
+        if (code != 0)
+        {
+            throw new InvalidOperationException($"Failed to delete trajectory (code {code}).");
+        }
     }
 
     public void SetAllowApproxMotion(bool enable, TimeSpan? timeout = null)
@@ -709,6 +842,66 @@ public class Lite6ArmClient : IDisposable
     public string GetRobotSerialNumber()
     {
         return _uxbus.GetRobotSerialNumber(_defaultTimeout);
+    }
+
+    private string ResolveControllerHost(string? host)
+    {
+        if (!string.IsNullOrWhiteSpace(host))
+        {
+            return host;
+        }
+
+        return _controllerHost ?? throw new InvalidOperationException("Controller host is not set. Connect or provide a host.");
+    }
+
+    private static JsonDocument PostJsonDocument(string url, string payload, TimeSpan timeout)
+    {
+        using var client = new HttpClient { Timeout = timeout };
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var response = client.PostAsync(url, content).GetAwaiter().GetResult();
+        response.EnsureSuccessStatusCode();
+        var responsePayload = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+        return JsonDocument.Parse(responsePayload);
+    }
+
+    private void WaitForTrajectoryStatus(TrajectoryRwStatus successStatus, TrajectoryRwStatus failureStatus, TimeSpan timeout, string filename, string operation)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var status = GetTrajectoryRwStatus(timeout: _defaultTimeout);
+            if (status == successStatus)
+            {
+                return;
+            }
+
+            if (status == failureStatus)
+            {
+                throw new InvalidOperationException($"Trajectory {operation} failed for {filename} (status {status}).");
+            }
+
+            Thread.Sleep(TimeSpan.FromMilliseconds(100));
+        }
+
+        throw new TimeoutException($"Trajectory {operation} timed out for {filename}.");
+    }
+
+    private void WaitForPlaybackCompletion(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        var pollTimeout = TimeSpan.FromMilliseconds(250);
+        while (DateTime.UtcNow < deadline)
+        {
+            var state = GetState(pollTimeout);
+            if (state == 0 || state == 1)
+            {
+                return;
+            }
+
+            Thread.Sleep(TimeSpan.FromMilliseconds(100));
+        }
+
+        throw new TimeoutException("Trajectory playback timed out.");
     }
 
     public void Dispose()
