@@ -268,6 +268,29 @@ internal sealed class UxbusClient
         SetFp32(UxbusRegister.MoveLine, payload, timeout);
     }
 
+    public void MoveLineCommon(float[] pose, float speed, float acceleration, float time, float radius, byte coordinate, bool isAxisAngle, byte onlyCheckType, TimeSpan timeout)
+    {
+        var payload = new float[10];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        payload[8] = time;
+        payload[9] = radius;
+        var extraBytes = new[] { coordinate, (byte)(isAxisAngle ? 1 : 0), onlyCheckType };
+        SetFp32WithBytes(UxbusRegister.MoveLine, payload, extraBytes, timeout);
+    }
+
+    public void MoveLineB(float[] pose, float speed, float acceleration, float time, float radius, TimeSpan timeout)
+    {
+        var payload = new float[10];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        payload[8] = time;
+        payload[9] = radius;
+        SetFp32(UxbusRegister.MoveLineB, payload, timeout);
+    }
+
     public void MoveServoJoint(float[] joints, float speed, float acceleration, float time, TimeSpan timeout)
     {
         var payload = new float[10];
@@ -288,6 +311,18 @@ internal sealed class UxbusClient
         SetFp32(UxbusRegister.MoveServoCart, payload, timeout);
     }
 
+    public void MoveServoCartesianAxisAngle(float[] pose, float speed, float acceleration, int toolCoord, bool relative, TimeSpan timeout)
+    {
+        var payload = new float[8];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        var extraBytes = new byte[5];
+        BinaryPrimitives.WriteInt32LittleEndian(extraBytes.AsSpan(0, 4), toolCoord);
+        extraBytes[4] = (byte)(relative ? 1 : 0);
+        SetFp32WithBytes(UxbusRegister.MoveServoCartAxisAngle, payload, extraBytes, timeout);
+    }
+
     public void MoveHome(float speed, float acceleration, float time, TimeSpan timeout)
     {
         var payload = new[] { speed, acceleration, time };
@@ -304,6 +339,40 @@ internal sealed class UxbusClient
         payload[14] = time;
         payload[15] = percent;
         SetFp32(UxbusRegister.MoveCircle, payload, timeout);
+    }
+
+    public void MoveCircleCommon(float[] pose1, float[] pose2, float speed, float acceleration, float time, float percent, byte coordinate, bool isAxisAngle, byte onlyCheckType, TimeSpan timeout)
+    {
+        var payload = new float[16];
+        Array.Copy(pose1, 0, payload, 0, Math.Min(pose1.Length, 6));
+        Array.Copy(pose2, 0, payload, 6, Math.Min(pose2.Length, 6));
+        payload[12] = speed;
+        payload[13] = acceleration;
+        payload[14] = time;
+        payload[15] = percent;
+        var extraBytes = new[] { coordinate, (byte)(isAxisAngle ? 1 : 0), onlyCheckType };
+        SetFp32WithBytes(UxbusRegister.MoveCircle, payload, extraBytes, timeout);
+    }
+
+    public void MoveLineTool(float[] pose, float speed, float acceleration, float time, TimeSpan timeout)
+    {
+        var payload = new float[9];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        payload[8] = time;
+        SetFp32(UxbusRegister.MoveLineTool, payload, timeout);
+    }
+
+    public void MoveLineAxisAngle(float[] pose, float speed, float acceleration, float time, byte coordinate, bool relative, TimeSpan timeout)
+    {
+        var payload = new float[9];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 6));
+        payload[6] = speed;
+        payload[7] = acceleration;
+        payload[8] = time;
+        var extraBytes = new[] { coordinate, (byte)(relative ? 1 : 0) };
+        SetFp32WithBytes(UxbusRegister.MoveLineAxisAngle, payload, extraBytes, timeout);
     }
 
     public void SleepInstruction(float seconds, TimeSpan timeout)
@@ -389,6 +458,28 @@ internal sealed class UxbusClient
         return GetFp32(UxbusRegister.GetJointTau, 7, timeout);
     }
 
+    public void MoveJointB(float[] joints, float speed, float acceleration, float radius, TimeSpan timeout)
+    {
+        var payload = new float[10];
+        Array.Copy(joints, payload, Math.Min(joints.Length, 7));
+        payload[7] = speed;
+        payload[8] = acceleration;
+        payload[9] = radius;
+        SetFp32(UxbusRegister.MoveJointB, payload, timeout);
+    }
+
+    public void MoveRelative(float[] pose, float speed, float acceleration, float time, float radius, bool isJointMotion, bool isAxisAngle, TimeSpan timeout)
+    {
+        var payload = new float[11];
+        Array.Copy(pose, payload, Math.Min(pose.Length, 7));
+        payload[7] = speed;
+        payload[8] = acceleration;
+        payload[9] = time;
+        payload[10] = radius;
+        var extraBytes = new[] { (byte)(isJointMotion ? 1 : 0), (byte)(isAxisAngle ? 1 : 0) };
+        SetFp32WithBytes(UxbusRegister.MoveRelative, payload, extraBytes, timeout);
+    }
+
     private void SetInt32(UxbusRegister register, int[] values, TimeSpan timeout)
     {
         var payload = new byte[values.Length * 4];
@@ -451,6 +542,22 @@ internal sealed class UxbusClient
         response.EnsureSuccess();
     }
 
+    private void SetFp32WithBytes(UxbusRegister register, float[] values, byte[] extraBytes, TimeSpan timeout)
+    {
+        var payload = new byte[values.Length * 4 + extraBytes.Length];
+        for (var i = 0; i < values.Length; i++)
+        {
+            BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(i * 4, 4), values[i]);
+        }
+
+        if (extraBytes.Length > 0)
+        {
+            Buffer.BlockCopy(extraBytes, 0, payload, values.Length * 4, extraBytes.Length);
+        }
+
+        var response = SendRequest((byte)register, payload, timeout);
+        response.EnsureSuccess();
+    }
     private float[] GetFp32(UxbusRegister register, int count, TimeSpan timeout)
     {
         var response = SendRequest((byte)register, Array.Empty<byte>(), timeout);
@@ -621,10 +728,13 @@ internal enum UxbusRegister : byte
     SetBrake = 0x12,
     SetMode = 0x13,
     MoveLine = 0x15,
+    MoveLineB = 0x16,
     MoveJoint = 0x17,
+    MoveJointB = 0x18,
     MoveHome = 0x19,
     SleepInstruction = 0x1A,
     MoveCircle = 0x1B,
+    MoveLineTool = 0x1C,
     MoveServoJoint = 0x1D,
     MoveServoCart = 0x1E,
     SetTcpJerk = 0x1F,
@@ -659,5 +769,8 @@ internal enum UxbusRegister : byte
     SetWorldOffset = 0x49,
     CounterReset = 0x4A,
     CounterPlus = 0x4B,
-    SetCartVContinue = 0x50
+    SetCartVContinue = 0x50,
+    MoveRelative = 0x53,
+    MoveLineAxisAngle = 0x5C,
+    MoveServoCartAxisAngle = 0x5D
 }

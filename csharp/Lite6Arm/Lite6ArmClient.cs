@@ -200,6 +200,22 @@ public class Lite6ArmClient : IDisposable
         _uxbus.MoveJoint(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
+    public void MoveJointsBlend(JointPositions joints, double speed, double acceleration, double radius, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)joints.J1,
+            (float)joints.J2,
+            (float)joints.J3,
+            (float)joints.J4,
+            (float)joints.J5,
+            (float)joints.J6,
+            0f
+        };
+
+        _uxbus.MoveJointB(payload, (float)speed, (float)acceleration, (float)radius, timeout ?? _defaultTimeout);
+    }
+
     public void MoveLinear(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
     {
         var payload = new[]
@@ -213,6 +229,82 @@ public class Lite6ArmClient : IDisposable
         };
 
         _uxbus.MoveLine(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveLinearBlend(Pose pose, double speed, double acceleration, double time, double radius, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw
+        };
+
+        _uxbus.MoveLineB(payload, (float)speed, (float)acceleration, (float)time, (float)radius, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveLinearCommon(Pose pose, double speed, double acceleration, double time, double radius, byte coordinate, bool isAxisAngle, byte onlyCheckType = 0, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw
+        };
+
+        _uxbus.MoveLineCommon(payload, (float)speed, (float)acceleration, (float)time, (float)radius, coordinate, isAxisAngle, onlyCheckType, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveLinearTool(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw
+        };
+
+        _uxbus.MoveLineTool(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveLinearAxisAngle(Pose axisAnglePose, double speed, double acceleration, double time, byte coordinate = 0, bool relative = false, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)axisAnglePose.X,
+            (float)axisAnglePose.Y,
+            (float)axisAnglePose.Z,
+            (float)axisAnglePose.Roll,
+            (float)axisAnglePose.Pitch,
+            (float)axisAnglePose.Yaw
+        };
+
+        _uxbus.MoveLineAxisAngle(payload, (float)speed, (float)acceleration, (float)time, coordinate, relative, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveRelative(Pose pose, double speed, double acceleration, double time, double radius, bool isJointMotion = false, bool isAxisAngle = false, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)pose.X,
+            (float)pose.Y,
+            (float)pose.Z,
+            (float)pose.Roll,
+            (float)pose.Pitch,
+            (float)pose.Yaw,
+            0f
+        };
+
+        _uxbus.MoveRelative(payload, (float)speed, (float)acceleration, (float)time, (float)radius, isJointMotion, isAxisAngle, timeout ?? _defaultTimeout);
     }
 
     public void MoveServoJoints(JointPositions joints, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
@@ -231,6 +323,11 @@ public class Lite6ArmClient : IDisposable
         _uxbus.MoveServoJoint(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
     }
 
+    public void MoveServoJoints(JointPositions joints, TimeSpan? timeout = null)
+    {
+        MoveServoJoints(joints, 0, 0, 0, timeout);
+    }
+
     public void MoveServoLinear(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
     {
         var payload = new[]
@@ -244,6 +341,21 @@ public class Lite6ArmClient : IDisposable
         };
 
         _uxbus.MoveServoCartesian(payload, (float)speed, (float)acceleration, (float)time, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveServoLinearAxisAngle(Pose axisAnglePose, double speed, double acceleration, int toolCoord = 0, bool relative = false, TimeSpan? timeout = null)
+    {
+        var payload = new[]
+        {
+            (float)axisAnglePose.X,
+            (float)axisAnglePose.Y,
+            (float)axisAnglePose.Z,
+            (float)axisAnglePose.Roll,
+            (float)axisAnglePose.Pitch,
+            (float)axisAnglePose.Yaw
+        };
+
+        _uxbus.MoveServoCartesianAxisAngle(payload, (float)speed, (float)acceleration, toolCoord, relative, timeout ?? _defaultTimeout);
     }
 
     public void MoveHome(double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
@@ -273,6 +385,112 @@ public class Lite6ArmClient : IDisposable
         };
 
         _uxbus.MoveCircle(pose1Payload, pose2Payload, (float)speed, (float)acceleration, (float)time, (float)percent, timeout ?? _defaultTimeout);
+    }
+
+    public void MoveCircleCommon(Pose pose1, Pose pose2, double speed, double acceleration, double time, double percent, byte coordinate, bool isAxisAngle, byte onlyCheckType = 0, TimeSpan? timeout = null)
+    {
+        var pose1Payload = new[]
+        {
+            (float)pose1.X,
+            (float)pose1.Y,
+            (float)pose1.Z,
+            (float)pose1.Roll,
+            (float)pose1.Pitch,
+            (float)pose1.Yaw
+        };
+        var pose2Payload = new[]
+        {
+            (float)pose2.X,
+            (float)pose2.Y,
+            (float)pose2.Z,
+            (float)pose2.Roll,
+            (float)pose2.Pitch,
+            (float)pose2.Yaw
+        };
+
+        _uxbus.MoveCircleCommon(pose1Payload, pose2Payload, (float)speed, (float)acceleration, (float)time, (float)percent, coordinate, isAxisAngle, onlyCheckType, timeout ?? _defaultTimeout);
+    }
+
+    public void SetPosition(Pose pose, double speed, double acceleration, double time = 0, double? radius = null, bool relative = false, TimeSpan? timeout = null)
+    {
+        if (relative)
+        {
+            MoveRelative(pose, speed, acceleration, time, (float)(radius ?? -1), false, false, timeout);
+            return;
+        }
+
+        if (radius.HasValue && radius.Value >= 0)
+        {
+            MoveLinearBlend(pose, speed, acceleration, time, radius.Value, timeout);
+            return;
+        }
+
+        MoveLinear(pose, speed, acceleration, time, timeout);
+    }
+
+    public void SetToolPosition(Pose pose, double speed, double acceleration, double time = 0, double? radius = null, TimeSpan? timeout = null)
+    {
+        if (radius.HasValue)
+        {
+            MoveLinearCommon(pose, speed, acceleration, time, radius.Value, 1, false, 0, timeout);
+            return;
+        }
+
+        MoveLinearTool(pose, speed, acceleration, time, timeout);
+    }
+
+    public void SetPositionAxisAngle(Pose axisAnglePose, double speed, double acceleration, double time = 0, double? radius = null, bool isToolCoord = false, bool relative = false, TimeSpan? timeout = null)
+    {
+        if (!isToolCoord && relative)
+        {
+            MoveRelative(axisAnglePose, speed, acceleration, time, (float)(radius ?? -1), false, true, timeout);
+            return;
+        }
+
+        MoveLinearCommon(axisAnglePose, speed, acceleration, time, (float)(radius ?? -1), (byte)(isToolCoord ? 1 : 0), true, 0, timeout);
+    }
+
+    public void SetServoAngle(JointPositions joints, double speed, double acceleration, double time = 0, double? radius = null, TimeSpan? timeout = null)
+    {
+        if (radius.HasValue && radius.Value >= 0)
+        {
+            MoveJointsBlend(joints, speed, acceleration, radius.Value, timeout);
+            return;
+        }
+
+        MoveJoints(joints, speed, acceleration, time, timeout);
+    }
+
+    public void SetServoAngle(int servoId, double angle, double speed, double acceleration, double time = 0, double? radius = null, TimeSpan? timeout = null)
+    {
+        var joints = GetJointPositions();
+        var updated = servoId switch
+        {
+            1 => joints with { J1 = angle },
+            2 => joints with { J2 = angle },
+            3 => joints with { J3 = angle },
+            4 => joints with { J4 = angle },
+            5 => joints with { J5 = angle },
+            6 => joints with { J6 = angle },
+            _ => throw new ArgumentOutOfRangeException(nameof(servoId), "Servo id must be between 1 and 6.")
+        };
+
+        SetServoAngle(updated, speed, acceleration, time, radius, timeout);
+    }
+
+    public void SetServoAngleJ(JointPositions joints, TimeSpan? timeout = null)
+    {
+        MoveServoJoints(joints, timeout);
+    }
+
+    public void SetServoCartesian(Pose pose, double speed, double acceleration, double time = 0, TimeSpan? timeout = null)
+    {
+        MoveServoLinear(pose, speed, acceleration, time, timeout);
+    }
+
+    public void SetServoCartesianAxisAngle(Pose axisAnglePose, double speed, double acceleration, int toolCoord = 0, bool relative = false, TimeSpan? timeout = null)
+    {
+        MoveServoLinearAxisAngle(axisAnglePose, speed, acceleration, toolCoord, relative, timeout);
     }
 
     public void SleepInstruction(double seconds, TimeSpan? timeout = null)
