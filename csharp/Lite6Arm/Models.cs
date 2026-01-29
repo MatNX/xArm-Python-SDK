@@ -23,6 +23,19 @@ public record ReducedState(
     bool? FenseEnabled,
     bool? CollisionReboundEnabled);
 
+public record TrajectoryInfo(string Name, double DurationSeconds);
+
+public enum TrajectoryRwStatus
+{
+    Idle = 0,
+    Loading = 1,
+    LoadSuccess = 2,
+    LoadFailed = 3,
+    Saving = 4,
+    SaveSuccess = 5,
+    SaveFailed = 6
+}
+
 public enum MotionType
 {
     Joint,

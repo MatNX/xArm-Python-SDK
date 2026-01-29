@@ -244,6 +244,41 @@ internal sealed class UxbusClient
         SetNu8(UxbusRegister.CounterPlus, Array.Empty<byte>(), timeout);
     }
 
+    public void SetRecordTrajectory(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetTrajRecord, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SaveTrajectory(string filename, TimeSpan timeout)
+    {
+        var payload = BuildTrajectoryNamePayload(filename);
+        SetNu8(UxbusRegister.SaveTraj, payload, timeout);
+    }
+
+    public void LoadTrajectory(string filename, TimeSpan timeout)
+    {
+        var payload = BuildTrajectoryNamePayload(filename);
+        SetNu8(UxbusRegister.LoadTraj, payload, timeout);
+    }
+
+    public void PlaybackTrajectory(int times, int doubleSpeed, TimeSpan timeout)
+    {
+        SetInt32(UxbusRegister.PlayTraj, new[] { times, doubleSpeed }, timeout);
+    }
+
+    public int GetTrajectoryRwStatus(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.GetTrajRwStatus, 1, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public byte[] GetCommonInfo(byte paramType, TimeSpan timeout)
+    {
+        var response = SendRequest((byte)UxbusRegister.GetCommonInfo, new[] { paramType }, timeout);
+        response.EnsureSuccess();
+        return response.Payload;
+    }
+
     public void SetAllowApproxMotion(bool enable, TimeSpan timeout)
     {
         SetNu8(UxbusRegister.SetAllowApproxMotion, new[] { (byte)(enable ? 1 : 0) }, timeout);
@@ -720,6 +755,30 @@ internal sealed class UxbusClient
         return result;
     }
 
+    private static byte[] BuildTrajectoryNamePayload(string filename)
+    {
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            throw new ArgumentException("Trajectory filename cannot be empty.", nameof(filename));
+        }
+
+        var name = filename.Trim();
+        if (!name.EndsWith(".traj", StringComparison.OrdinalIgnoreCase))
+        {
+            name = $"{name}.traj";
+        }
+
+        if (name.Length > 80)
+        {
+            throw new ArgumentException("Trajectory filename length must be 80 characters or fewer.", nameof(filename));
+        }
+
+        var nameBytes = Encoding.ASCII.GetBytes(name);
+        var payload = new byte[81];
+        Buffer.BlockCopy(nameBytes, 0, payload, 0, nameBytes.Length);
+        return payload;
+    }
+
     private UxbusResponse SendRequest(byte functionCode, byte[] payload, TimeSpan timeout)
     {
         lock (_sync)
@@ -866,6 +925,11 @@ internal enum UxbusRegister : byte
     SetReducedJRange = 0x3A,
     SetFenseOn = 0x3B,
     SetCollisReb = 0x3C,
+    SetTrajRecord = 0x3D,
+    SaveTraj = 0x3E,
+    LoadTraj = 0x3F,
+    PlayTraj = 0x40,
+    GetTrajRwStatus = 0x41,
     SetSelfCollisCheck = 0x4D,
     SetCollisTool = 0x4E,
     SetSimulationRobot = 0x4F,
@@ -884,7 +948,8 @@ internal enum UxbusRegister : byte
     TgpioW16B = 0x7F,
     TgpioR16B = 0x80,
     TgpioW32B = 0x81,
-    TgpioR32B = 0x82
+    TgpioR32B = 0x82,
+    GetCommonInfo = 0xEA
 }
 
 internal static class ServoRegister
