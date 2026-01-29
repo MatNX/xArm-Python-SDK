@@ -66,6 +66,11 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetCartesianVelocityContinuous(enable, timeout ?? _defaultTimeout);
     }
 
+    public void SystemControl(int value, TimeSpan? timeout = null)
+    {
+        _uxbus.SystemControl(value, timeout ?? _defaultTimeout);
+    }
+
     public void SetReducedMode(bool enable, TimeSpan? timeout = null)
     {
         _uxbus.SetReducedMode(enable, timeout ?? _defaultTimeout);
@@ -169,6 +174,14 @@ public class Lite6ArmClient : IDisposable
         _uxbus.SetState(state, timeout ?? _defaultTimeout);
     }
 
+    public void EmergencyStop(TimeSpan? timeout = null)
+    {
+        var actualTimeout = timeout ?? _defaultTimeout;
+        SetState(4, actualTimeout);
+        MotionEnable(true, 8, actualTimeout);
+        SetState(0, actualTimeout);
+    }
+
     public void CleanError(TimeSpan? timeout = null)
     {
         _uxbus.CleanError(timeout ?? _defaultTimeout);
@@ -177,6 +190,22 @@ public class Lite6ArmClient : IDisposable
     public void CleanWarning(TimeSpan? timeout = null)
     {
         _uxbus.CleanWarning(timeout ?? _defaultTimeout);
+    }
+
+    public void SetSelfCollisionDetection(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetSelfCollisionDetection(enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetCollisionToolModel(CollisionToolType toolType, double[]? parameters = null, TimeSpan? timeout = null)
+    {
+        var payload = parameters is null ? Array.Empty<float>() : Array.ConvertAll(parameters, item => (float)item);
+        _uxbus.SetCollisionToolModel((byte)toolType, payload, timeout ?? _defaultTimeout);
+    }
+
+    public void SetSimulationRobot(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetSimulationRobot(enable, timeout ?? _defaultTimeout);
     }
 
     public int GetCommandCount(TimeSpan? timeout = null)
@@ -573,6 +602,46 @@ public class Lite6ArmClient : IDisposable
     public void SaveConfiguration(TimeSpan? timeout = null)
     {
         _uxbus.SaveConfiguration(timeout ?? _defaultTimeout);
+    }
+
+    public void SetGripperEnable(bool enable, TimeSpan? timeout = null)
+    {
+        _uxbus.SetGripperEnable(enable, timeout ?? _defaultTimeout);
+    }
+
+    public void SetGripperMode(int mode, TimeSpan? timeout = null)
+    {
+        _uxbus.SetGripperMode(mode, timeout ?? _defaultTimeout);
+    }
+
+    public void SetGripperSpeed(int speed, TimeSpan? timeout = null)
+    {
+        _uxbus.SetGripperSpeed(speed, timeout ?? _defaultTimeout);
+    }
+
+    public int GetGripperPosition(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetGripperPosition(timeout ?? _defaultTimeout);
+    }
+
+    public void SetGripperPosition(int position, TimeSpan? timeout = null)
+    {
+        _uxbus.SetGripperPosition(position, timeout ?? _defaultTimeout);
+    }
+
+    public void SetGripperZero(TimeSpan? timeout = null)
+    {
+        _uxbus.SetGripperZero(timeout ?? _defaultTimeout);
+    }
+
+    public int GetGripperErrorCode(TimeSpan? timeout = null)
+    {
+        return _uxbus.GetGripperErrorCode(timeout ?? _defaultTimeout);
+    }
+
+    public void CleanGripperError(TimeSpan? timeout = null)
+    {
+        _uxbus.CleanGripperError(timeout ?? _defaultTimeout);
     }
 
     public JointPositions GetJointPositions()

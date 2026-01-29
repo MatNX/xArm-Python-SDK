@@ -34,6 +34,7 @@ internal sealed class UxbusClient
 {
     private const ushort PrivateProtocolId = 0x02;
     private const ushort TransactionIdMax = 65535;
+    private const byte GripperBusId = 8;
 
     private readonly IArmTransport _transport;
     private readonly object _sync = new();
@@ -120,6 +121,32 @@ internal sealed class UxbusClient
     public void SetCartesianVelocityContinuous(bool enable, TimeSpan timeout)
     {
         SetNu8(UxbusRegister.SetCartVContinue, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SystemControl(int value, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SystemControl, new[] { (byte)value }, timeout);
+    }
+
+    public void SetSelfCollisionDetection(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetSelfCollisCheck, new[] { (byte)(enable ? 1 : 0) }, timeout);
+    }
+
+    public void SetCollisionToolModel(byte toolType, float[] parameters, TimeSpan timeout)
+    {
+        if (parameters.Length == 0)
+        {
+            SetNu8(UxbusRegister.SetCollisTool, new[] { toolType }, timeout);
+            return;
+        }
+
+        SetFp32WithBytes(UxbusRegister.SetCollisTool, parameters, new[] { toolType }, timeout);
+    }
+
+    public void SetSimulationRobot(bool enable, TimeSpan timeout)
+    {
+        SetNu8(UxbusRegister.SetSimulationRobot, new[] { (byte)(enable ? 1 : 0) }, timeout);
     }
 
     public void SetReducedMode(bool enable, TimeSpan timeout)
@@ -458,6 +485,47 @@ internal sealed class UxbusClient
         return GetFp32(UxbusRegister.GetJointTau, 7, timeout);
     }
 
+    public void SetGripperEnable(bool enable, TimeSpan timeout)
+    {
+        TgpioWrite16(GripperBusId, ServoRegister.ControlEnable, enable ? 1f : 0f, timeout);
+    }
+
+    public void SetGripperMode(int mode, TimeSpan timeout)
+    {
+        TgpioWrite16(GripperBusId, ServoRegister.ControlMode, mode, timeout);
+    }
+
+    public void SetGripperSpeed(int speed, TimeSpan timeout)
+    {
+        TgpioWrite16(GripperBusId, ServoRegister.PositionSpeed, speed, timeout);
+    }
+
+    public int GetGripperPosition(TimeSpan timeout)
+    {
+        return TgpioRead32(GripperBusId, ServoRegister.CurrentPosition, timeout);
+    }
+
+    public void SetGripperPosition(int position, TimeSpan timeout)
+    {
+        TgpioWrite32(GripperBusId, ServoRegister.TargetPosition, position, timeout);
+    }
+
+    public void SetGripperZero(TimeSpan timeout)
+    {
+        TgpioWrite16(GripperBusId, ServoRegister.MotorZero, 1, timeout);
+    }
+
+    public int GetGripperErrorCode(TimeSpan timeout)
+    {
+        var response = GetNu8(UxbusRegister.TgpioErr, 2, timeout);
+        return response.Length > 0 ? response[0] : 0;
+    }
+
+    public void CleanGripperError(TimeSpan timeout)
+    {
+        TgpioWrite16(GripperBusId, ServoRegister.ResetError, 1, timeout);
+    }
+
     public void MoveJointB(float[] joints, float speed, float acceleration, float radius, TimeSpan timeout)
     {
         var payload = new float[10];
@@ -557,6 +625,41 @@ internal sealed class UxbusClient
 
         var response = SendRequest((byte)register, payload, timeout);
         response.EnsureSuccess();
+    }
+
+    private void TgpioWrite16(byte busId, ushort address, float value, TimeSpan timeout)
+    {
+        var payload = new byte[1 + 2 + 4];
+        payload[0] = busId;
+        BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(1, 2), address);
+        BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(3, 4), value);
+        var response = SendRequest((byte)UxbusRegister.TgpioW16B, payload, timeout);
+        response.EnsureSuccess();
+    }
+
+    private void TgpioWrite32(byte busId, ushort address, float value, TimeSpan timeout)
+    {
+        var payload = new byte[1 + 2 + 4];
+        payload[0] = busId;
+        BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(1, 2), address);
+        BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(3, 4), value);
+        var response = SendRequest((byte)UxbusRegister.TgpioW32B, payload, timeout);
+        response.EnsureSuccess();
+    }
+
+    private int TgpioRead32(byte busId, ushort address, TimeSpan timeout)
+    {
+        var payload = new byte[1 + 2];
+        payload[0] = busId;
+        BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(1, 2), address);
+        var response = SendRequest((byte)UxbusRegister.TgpioR32B, payload, timeout);
+        response.EnsureSuccess();
+        if (response.Payload.Length < 4)
+        {
+            return 0;
+        }
+
+        return BinaryPrimitives.ReadInt32BigEndian(response.Payload.AsSpan(0, 4));
     }
     private float[] GetFp32(UxbusRegister register, int count, TimeSpan timeout)
     {
@@ -718,6 +821,7 @@ internal enum UxbusRegister : byte
     GetRobotSn = 0x02,
     GetReportTauOrI = 0x05,
     GetAllowApproxMotion = 0x07,
+    SystemControl = 0x0A,
     MotionEnable = 0x0B,
     SetState = 0x0C,
     GetState = 0x0D,
@@ -762,6 +866,9 @@ internal enum UxbusRegister : byte
     SetReducedJRange = 0x3A,
     SetFenseOn = 0x3B,
     SetCollisReb = 0x3C,
+    SetSelfCollisCheck = 0x4D,
+    SetCollisTool = 0x4E,
+    SetSimulationRobot = 0x4F,
     SetAllowApproxMotion = 0x42,
     ReportTauOrI = 0x46,
     SetTimer = 0x47,
@@ -772,5 +879,21 @@ internal enum UxbusRegister : byte
     SetCartVContinue = 0x50,
     MoveRelative = 0x53,
     MoveLineAxisAngle = 0x5C,
-    MoveServoCartAxisAngle = 0x5D
+    MoveServoCartAxisAngle = 0x5D,
+    TgpioErr = 0x7D,
+    TgpioW16B = 0x7F,
+    TgpioR16B = 0x80,
+    TgpioW32B = 0x81,
+    TgpioR32B = 0x82
+}
+
+internal static class ServoRegister
+{
+    public const ushort ControlEnable = 0x0100;
+    public const ushort ControlMode = 0x0101;
+    public const ushort PositionSpeed = 0x0303;
+    public const ushort TargetPosition = 0x0700;
+    public const ushort CurrentPosition = 0x0702;
+    public const ushort MotorZero = 0x0817;
+    public const ushort ResetError = 0x0109;
 }
