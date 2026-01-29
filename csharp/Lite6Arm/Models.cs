@@ -28,3 +28,15 @@ public enum MotionType
     Joint,
     Linear
 }
+
+public enum CollisionToolType
+{
+    None = 0,
+    XarmGripper = 1,
+    XarmVacuumGripper = 2,
+    XarmBioGripper = 3,
+    Robotiq2F85 = 4,
+    Robotiq2F140 = 5,
+    Cylinder = 21,
+    Box = 22
+}
